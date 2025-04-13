@@ -5,11 +5,11 @@ import { TagBadge } from '@/components/tag-badge';
 import { formatDate, getTextPreview } from '@/lib/utils';
 
 interface NoteCardProps {
-  id: string;
+  id: number | string;
   title: string;
   content: string;
   updatedAt: Date;
-  tags: { id: string; name: string; color: string; }[];
+  tags: { id: number | string; name: string; color: string; }[];
 }
 
 export function NoteCard({ id, title, content, updatedAt, tags }: NoteCardProps) {

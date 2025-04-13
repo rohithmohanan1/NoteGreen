@@ -7,6 +7,9 @@ import { MobileNav } from '@/components/mobile-nav';
 import { CreateFolderDialog } from '@/dialogs/create-folder-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useQuery } from '@tanstack/react-query';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Note, Tag, Folder } from '@shared/schema';
 import { 
   Search,
   Plus,
@@ -20,18 +23,47 @@ export default function Home() {
   const [showSearch, setShowSearch] = useState(false);
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   
-  const notes = useStore((state) => state.notes);
-  const folders = useStore((state) => state.folders);
-  const tags = useStore((state) => state.tags);
   const activeFolder = useStore((state) => state.activeFolder);
   const searchQuery = useStore((state) => state.searchQuery);
   const setSearchQuery = useStore((state) => state.setSearchQuery);
   
-  // Get filtered notes
+  // Fetch notes from API
+  const { data: notes = [], isLoading: isLoadingNotes } = useQuery<Note[]>({ 
+    queryKey: ['/api/notes'],
+  });
+  
+  // Fetch folders from API
+  const { data: folders = [], isLoading: isLoadingFolders } = useQuery<Folder[]>({ 
+    queryKey: ['/api/folders'],
+  });
+  
+  // Fetch tags from API
+  const { data: tags = [], isLoading: isLoadingTags } = useQuery<Tag[]>({ 
+    queryKey: ['/api/tags'],
+  });
+  
+  // Fetch notes by folder if an active folder is selected
+  const { data: folderNotes = [] } = useQuery<Note[]>({
+    queryKey: ['/api/folders', activeFolder, 'notes'],
+    queryFn: async () => {
+      if (!activeFolder) return notes;
+      // Convert activeFolder to number if it's a string
+      const folderId = typeof activeFolder === 'string' ? parseInt(activeFolder) : activeFolder;
+      const res = await fetch(`/api/folders/${folderId}/notes`);
+      if (!res.ok) throw new Error('Failed to fetch notes for folder');
+      return await res.json();
+    },
+    enabled: !!activeFolder,
+  });
+  
+  // Get filtered notes based on search query or active folder
   const filteredNotes = searchQuery
-    ? useStore((state) => state.searchNotes(searchQuery))
+    ? notes.filter(note => 
+        note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        note.content.toLowerCase().includes(searchQuery.toLowerCase())
+      )
     : activeFolder
-      ? useStore((state) => state.getNotesByFolderId(activeFolder))
+      ? folderNotes
       : notes;
   
   // Sort notes by updatedAt (most recent first)
@@ -42,9 +74,10 @@ export default function Home() {
   // Get only the 3 most recent notes for the "Recent Notes" section
   const recentNotes = sortedNotes.slice(0, 3);
   
-  // Find the tags for a note
-  const getTagsForNote = (tagIds: string[]) => {
-    return tags.filter(tag => tagIds.includes(tag.id));
+  // Get note-tag relationships and map them for display
+  // This is a placeholder function until we can properly fetch tags for notes
+  const getTagsForNote = (noteId: number | string) => {
+    return [];
   };
   
   // Create a new note
@@ -58,6 +91,8 @@ export default function Home() {
       setSearchQuery('');
     };
   }, [setSearchQuery]);
+  
+  const isLoading = isLoadingNotes || isLoadingFolders || isLoadingTags;
   
   return (
     <div className="flex flex-col h-screen bg-background">
