@@ -13,14 +13,21 @@ import {
   Check, 
   MoreVertical, 
   Plus, 
-  Trash2
+  Trash2,
+  Loader2
 } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
+import { Folder, Note, Tag } from '@shared/schema';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 export default function Editor() {
   const [, setLocation] = useLocation();
   const [match, params] = useRoute('/edit/:id');
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -29,62 +36,162 @@ export default function Editor() {
   const [createTagOpen, setCreateTagOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   
-  const addNote = useStore((state) => state.addNote);
-  const updateNote = useStore((state) => state.updateNote);
-  const deleteNote = useStore((state) => state.deleteNote);
-  const getNoteById = useStore((state) => state.getNoteById);
-  const folders = useStore((state) => state.folders);
-  const tags = useStore((state) => state.tags);
-  
   const isNewNote = params?.id === 'new';
-  const noteId = params?.id;
+  const noteId = params?.id !== 'new' ? parseInt(params?.id || '0') : undefined;
+  
+  // Fetch folders from API
+  const { data: folders = [] } = useQuery<Folder[]>({ 
+    queryKey: ['/api/folders'],
+  });
+  
+  // Fetch tags from API
+  const { data: tags = [] } = useQuery<Tag[]>({ 
+    queryKey: ['/api/tags'],
+  });
+  
+  // Fetch note data if editing an existing note
+  const { data: noteData, isLoading: isLoadingNote } = useQuery<Note>({
+    queryKey: ['/api/notes', noteId],
+    queryFn: async () => {
+      if (isNewNote || !noteId) throw new Error('Invalid note ID');
+      const res = await fetch(`/api/notes/${noteId}`);
+      if (!res.ok) throw new Error('Failed to fetch note');
+      return await res.json();
+    },
+    enabled: !isNewNote && !!noteId,
+  });
+  
+  // Create note mutation
+  const { mutate: createNote, isPending: isCreating } = useMutation({
+    mutationFn: async (note: { title: string; content: string; folderId: number | null }) => {
+      const response = await apiRequest('POST', '/api/notes', note);
+      return response.json();
+    },
+    onSuccess: () => {
+      // Invalidate notes query to trigger a refresh
+      queryClient.invalidateQueries({ queryKey: ['/api/notes'] });
+      
+      toast({
+        title: "Note created",
+        description: "Your note has been created successfully.",
+      });
+      
+      setLocation('/');
+    },
+    onError: (error) => {
+      toast({
+        title: "Error creating note",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Update note mutation
+  const { mutate: updateExistingNote, isPending: isUpdating } = useMutation({
+    mutationFn: async ({ id, note }: { id: number; note: { title: string; content: string; folderId: number | null } }) => {
+      const response = await apiRequest('PUT', `/api/notes/${id}`, note);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notes'] });
+      if (noteId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/notes', noteId] });
+      }
+      
+      toast({
+        title: "Note updated",
+        description: "Your note has been updated successfully.",
+      });
+      
+      setLocation('/');
+    },
+    onError: (error) => {
+      toast({
+        title: "Error updating note",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Delete note mutation
+  const { mutate: deleteExistingNote, isPending: isDeleting } = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest('DELETE', `/api/notes/${id}`);
+      return response.status === 204 ? null : response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notes'] });
+      
+      toast({
+        title: "Note deleted",
+        description: "Your note has been deleted successfully.",
+      });
+      
+      setLocation('/');
+    },
+    onError: (error) => {
+      toast({
+        title: "Error deleting note",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive",
+      });
+    },
+  });
   
   // Load existing note data if editing
   useEffect(() => {
-    if (!isNewNote && noteId) {
-      const note = getNoteById(noteId);
-      if (note) {
-        setTitle(note.title);
-        setContent(note.content);
-        setSelectedFolder(note.folderId);
-        setSelectedTags(note.tagIds);
-      } else {
-        // Note not found, redirect to home
-        setLocation('/');
-      }
+    if (!isNewNote && noteData) {
+      setTitle(noteData.title);
+      setContent(noteData.content);
+      setSelectedFolder(noteData.folderId ? noteData.folderId.toString() : null);
+      
+      // We should fetch note tags later
+      // For now just set an empty array
+      setSelectedTags([]);
     }
-  }, [isNewNote, noteId, getNoteById, setLocation]);
+  }, [isNewNote, noteData]);
+  
+  const isPending = isCreating || isUpdating || isDeleting;
   
   const handleSave = () => {
     if (!title.trim()) {
-      return; // Don't save empty notes
+      toast({
+        title: "Title required",
+        description: "Please provide a title for your note.",
+        variant: "destructive",
+      });
+      return;
     }
+    
+    // Convert selectedFolder to number or null
+    const folderId = selectedFolder ? parseInt(selectedFolder) : null;
     
     if (isNewNote) {
       // Create new note
-      addNote({
-        title,
+      createNote({
+        title: title.trim(),
         content,
-        folderId: selectedFolder,
-        tagIds: selectedTags,
+        folderId,
       });
     } else if (noteId) {
       // Update existing note
-      updateNote(noteId, {
-        title,
-        content,
-        folderId: selectedFolder,
-        tagIds: selectedTags,
+      updateExistingNote({
+        id: noteId,
+        note: {
+          title: title.trim(),
+          content,
+          folderId,
+        }
       });
     }
-    
-    setLocation('/');
   };
   
   const handleDelete = () => {
     if (noteId && !isNewNote) {
-      deleteNote(noteId);
-      setLocation('/');
+      deleteExistingNote(noteId);
+      setDeleteDialogOpen(false);
     }
   };
   
@@ -121,8 +228,13 @@ export default function Editor() {
             size="icon"
             className="rounded-full hover:bg-accent/30"
             onClick={handleSave}
+            disabled={isPending}
           >
-            <Check className="h-5 w-5" />
+            {isPending ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Check className="h-5 w-5" />
+            )}
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -155,7 +267,7 @@ export default function Editor() {
           <Input
             type="text"
             placeholder="Title"
-            className="w-full px-3 py-2 bg-cardBg rounded-lg text-white placeholder-gray-400 border-none text-lg font-medium"
+            className="w-full px-3 py-2 bg-cardBg rounded-lg text-gray-400 placeholder-gray-400 border-none text-lg font-medium"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
@@ -174,7 +286,7 @@ export default function Editor() {
               <SelectContent className="bg-cardBg border-gray-700">
                 <SelectItem value="none">No folder</SelectItem>
                 {folders.map((folder) => (
-                  <SelectItem key={folder.id} value={folder.id}>
+                  <SelectItem key={folder.id} value={folder.id.toString()}>
                     {folder.name}
                   </SelectItem>
                 ))}
@@ -184,14 +296,14 @@ export default function Editor() {
           
           <div className="flex items-center flex-wrap gap-1">
             {selectedTags.map((tagId) => {
-              const tag = tags.find((t) => t.id === tagId);
+              const tag = tags.find(t => t.id.toString() === tagId);
               if (!tag) return null;
               return (
                 <TagBadge
                   key={tag.id}
                   name={tag.name}
                   color={tag.color}
-                  onRemove={() => removeTag(tag.id)}
+                  onRemove={() => removeTag(tag.id.toString())}
                 />
               );
             })}
@@ -210,11 +322,11 @@ export default function Editor() {
               <DropdownMenuContent align="start" className="bg-cardBg border-gray-700">
                 {tags.length > 0 ? (
                   tags
-                    .filter((tag) => !selectedTags.includes(tag.id))
-                    .map((tag) => (
+                    .filter(tag => !selectedTags.includes(tag.id.toString()))
+                    .map(tag => (
                       <DropdownMenuItem
                         key={tag.id}
-                        onClick={() => addTag(tag.id)}
+                        onClick={() => addTag(tag.id.toString())}
                         className="cursor-pointer"
                       >
                         <TagBadge name={tag.name} color={tag.color} className="mr-2" />
@@ -275,8 +387,16 @@ export default function Editor() {
               type="button"
               variant="destructive"
               onClick={handleDelete}
+              disabled={isDeleting}
             >
-              Delete
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
