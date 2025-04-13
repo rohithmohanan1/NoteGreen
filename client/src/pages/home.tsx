@@ -159,69 +159,98 @@ export default function Home() {
       
       {/* Notes Content */}
       <div className="flex-1 overflow-y-auto px-4 pt-3 pb-20 bg-background">
-        {/* Recent Notes Section - only show if not searching and have multiple notes */}
-        {!searchQuery && sortedNotes.length > 3 && (
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-2">
-              <h2 className="font-medium text-base">Recent Notes</h2>
-              <Button variant="link" size="sm" className="text-xs text-gray-400 h-auto p-0">
-                See all
-              </Button>
+        {isLoading ? (
+          // Loading state
+          <div className="space-y-3">
+            <div className="flex items-center justify-between mb-1">
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="h-5 w-5 rounded" />
             </div>
-            
-            {recentNotes.map((note) => (
-              <NoteCard
-                key={note.id}
-                id={note.id}
-                title={note.title}
-                content={note.content}
-                updatedAt={new Date(note.updatedAt)}
-                tags={getTagsForNote(note.tagIds)}
-              />
+            {Array(3).fill(0).map((_, i) => (
+              <div key={i} className="p-3 bg-cardBg rounded-lg">
+                <div className="flex justify-between items-start mb-1">
+                  <Skeleton className="h-5 w-36" />
+                  <Skeleton className="h-4 w-16" />
+                </div>
+                <Skeleton className="h-4 w-full mb-1" />
+                <Skeleton className="h-4 w-3/4 mb-2" />
+                <div className="flex space-x-2">
+                  <Skeleton className="h-5 w-12 rounded-full" />
+                  <Skeleton className="h-5 w-12 rounded-full" />
+                </div>
+              </div>
             ))}
           </div>
-        )}
-        
-        {/* All Notes Section */}
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="font-medium text-base">
-              {searchQuery 
-                ? 'Search Results' 
-                : activeFolder 
-                  ? folders.find(f => f.id === activeFolder)?.name || 'Notes'
-                  : 'All Notes'
-              }
-            </h2>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded hover:bg-surface transition-colors">
-              <SortDesc className="h-4 w-4 text-gray-400" />
-            </Button>
-          </div>
-          
-          {sortedNotes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8">
-              <p className="text-gray-400 mb-4">No notes found</p>
-              <Button 
-                onClick={handleCreateNote}
-                style={{ backgroundColor: '#1F5C42' }}
-              >
-                Create your first note
-              </Button>
+        ) : (
+          <>
+            {/* Recent Notes Section - only show if not searching and have multiple notes */}
+            {!searchQuery && sortedNotes.length > 3 && (
+              <div className="mb-6">
+                <div className="flex justify-between items-center mb-2">
+                  <h2 className="font-medium text-base">Recent Notes</h2>
+                  <Button variant="link" size="sm" className="text-xs text-gray-400 h-auto p-0">
+                    See all
+                  </Button>
+                </div>
+                
+                {recentNotes.map((note) => (
+                  <NoteCard
+                    key={note.id}
+                    id={note.id}
+                    title={note.title}
+                    content={note.content}
+                    updatedAt={new Date(note.updatedAt)}
+                    tags={getTagsForNote(note.id)}
+                  />
+                ))}
+              </div>
+            )}
+            
+            {/* All Notes Section */}
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="font-medium text-base">
+                  {searchQuery 
+                    ? 'Search Results' 
+                    : activeFolder 
+                      ? folders.find(f => {
+                          const folderId = typeof activeFolder === 'string' ? parseInt(activeFolder) : activeFolder;
+                          return f.id === folderId;
+                        })?.name || 'Notes'
+                      : 'All Notes'
+                  }
+                </h2>
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded hover:bg-surface transition-colors">
+                  <SortDesc className="h-4 w-4 text-gray-400" />
+                </Button>
+              </div>
+              
+              {sortedNotes.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <p className="text-gray-400 mb-4">No notes found</p>
+                  <Button 
+                    onClick={handleCreateNote}
+                    style={{ backgroundColor: '#1F5C42' }}
+                  >
+                    Create your first note
+                  </Button>
+                </div>
+              ) : (
+                // Show all notes if not in "Recent Notes" mode, otherwise skip the first 3
+                (searchQuery || sortedNotes.length <= 3 ? sortedNotes : sortedNotes.slice(3)).map((note) => (
+                  <NoteCard
+                    key={note.id}
+                    id={note.id}
+                    title={note.title}
+                    content={note.content}
+                    updatedAt={new Date(note.updatedAt)}
+                    tags={getTagsForNote(note.id)}
+                  />
+                ))
+              )}
             </div>
-          ) : (
-            // Show all notes if not in "Recent Notes" mode, otherwise skip the first 3
-            (searchQuery || sortedNotes.length <= 3 ? sortedNotes : sortedNotes.slice(3)).map((note) => (
-              <NoteCard
-                key={note.id}
-                id={note.id}
-                title={note.title}
-                content={note.content}
-                updatedAt={new Date(note.updatedAt)}
-                tags={getTagsForNote(note.tagIds)}
-              />
-            ))
-          )}
-        </div>
+          </>
+        )}
       </div>
       
       {/* Floating Action Button */}
