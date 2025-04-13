@@ -46,8 +46,8 @@ export function RichTextEditor({ content, onChange, placeholder }: RichTextEdito
     },
     editorProps: {
       attributes: {
-        class: 'editor-content p-3 bg-cardBg rounded-b-lg focus:outline-none min-h-[200px] prose prose-invert prose-sm max-w-none',
-        placeholder: placeholder,
+        class: 'editor-content p-3 bg-cardBg rounded-b-lg focus:outline-none min-h-[200px] prose prose-invert prose-sm max-w-none text-white',
+        placeholder: placeholder || 'Start writing...',
       },
     },
   });
