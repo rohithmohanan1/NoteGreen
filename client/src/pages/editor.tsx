@@ -165,14 +165,14 @@ export default function Editor() {
         <div className="mb-4 flex flex-wrap gap-2">
           <div className="relative">
             <Select 
-              value={selectedFolder || ''} 
-              onValueChange={(value) => setSelectedFolder(value || null)}
+              value={selectedFolder || 'none'} 
+              onValueChange={(value) => setSelectedFolder(value === 'none' ? null : value)}
             >
               <SelectTrigger className="px-3 py-1.5 bg-cardBg rounded-lg text-white text-sm border-none focus:ring-accent">
                 <SelectValue placeholder="Select folder" />
               </SelectTrigger>
               <SelectContent className="bg-cardBg border-gray-700">
-                <SelectItem value="">No folder</SelectItem>
+                <SelectItem value="none">No folder</SelectItem>
                 {folders.map((folder) => (
                   <SelectItem key={folder.id} value={folder.id}>
                     {folder.name}
