@@ -8,7 +8,7 @@
     "build:client": "vite build",
     "build:server": "esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "build": "npm run build:client && npm run build:server",
-    "postbuild": "npm run db:push && npm run db:init",
+    "postbuild": "npm run db:ensure && npm run db:push && npm run db:init",
     "vercel-build": "npm run build:client",
     "start": "cross-env NODE_ENV=production node dist/index.js",
     "check": "tsc",
@@ -16,6 +16,7 @@
     "db:studio": "drizzle-kit studio",
     "db:generate": "drizzle-kit generate:sqlite",
     "db:init": "tsx scripts/init-db.ts",
+    "db:ensure": "tsx scripts/ensure-db.ts",
     "generate-icons": "node scripts/generate-icons.js"
   },
   "dependencies": {
