@@ -2,11 +2,11 @@
   "version": 2,
   "builds": [
     {
-      "src": "client/**",
+      "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
         "distDir": "dist/public",
-        "buildCommand": "cd ../.. && npm install && npm run build:client"
+        "buildCommand": "npm install && npm run build:client"
       }
     },
     {
@@ -20,9 +20,8 @@
       "dest": "/server/index.ts"
     },
     {
-      "src": "/(.*)",
-      "dest": "/dist/public/$1",
-      "continue": true
+      "src": "/(.*\\.[a-zA-Z0-9]{2,}|manifest\\.json|sw\\.js)$",
+      "dest": "/dist/public/$1"
     },
     {
       "src": "/(.*)",
