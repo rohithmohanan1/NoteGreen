@@ -1,11 +1,12 @@
-import { pgTable, text, serial, integer, boolean, timestamp, primaryKey } from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
 
 // Folder Schema
-export const folders = pgTable("folders", {
-  id: serial("id").primaryKey(),
+export const folders = sqliteTable("folders", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull().unique(),
 });
 
@@ -14,11 +15,13 @@ export const insertFolderSchema = createInsertSchema(folders).omit({
 });
 
 // User Schema
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
+export const users = sqliteTable("users", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -27,8 +30,8 @@ export const insertUserSchema = createInsertSchema(users).omit({
 });
 
 // Tag Schema
-export const tags = pgTable("tags", {
-  id: serial("id").primaryKey(),
+export const tags = sqliteTable("tags", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull().unique(),
   color: text("color").notNull(),
 });
@@ -38,13 +41,19 @@ export const insertTagSchema = createInsertSchema(tags).omit({
 });
 
 // Note Schema
-export const notes = pgTable("notes", {
-  id: serial("id").primaryKey(),
+export const notes = sqliteTable("notes", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   title: text("title").notNull(),
   content: text("content").notNull(),
-  folderId: integer("folder_id").references(() => folders.id, { onDelete: "set null" }),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  folderId: integer("folder_id").references(() => folders.id, {
+    onDelete: "set null",
+  }),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: integer("updated_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const insertNoteSchema = createInsertSchema(notes).omit({
@@ -53,11 +62,15 @@ export const insertNoteSchema = createInsertSchema(notes).omit({
   updatedAt: true,
 });
 
-// Note-Tag relationship 
-export const noteTags = pgTable("note_tags", {
-  id: serial("id").primaryKey(),
-  noteId: integer("note_id").notNull().references(() => notes.id, { onDelete: "cascade" }),
-  tagId: integer("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
+// Note-Tag relationship
+export const noteTags = sqliteTable("note_tags", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  noteId: integer("note_id")
+    .notNull()
+    .references(() => notes.id, { onDelete: "cascade" }),
+  tagId: integer("tag_id")
+    .notNull()
+    .references(() => tags.id, { onDelete: "cascade" }),
 });
 
 export const insertNoteTagSchema = createInsertSchema(noteTags).omit({
@@ -80,7 +93,7 @@ export type InsertFolder = z.infer<typeof insertFolderSchema>;
 export type NoteTag = typeof noteTags.$inferSelect;
 export type InsertNoteTag = z.infer<typeof insertNoteTagSchema>;
 
-// Define relations
+// Relations remain the same
 export const notesRelations = relations(notes, ({ one, many }) => ({
   folder: one(folders, {
     fields: [notes.folderId],

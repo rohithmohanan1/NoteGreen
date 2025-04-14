@@ -4,7 +4,7 @@ import "./index.css";
 
 // Custom styles for mobile optimization
 const addMobileStyles = () => {
-  const style = document.createElement('style');
+  const style = document.createElement("style");
   style.textContent = `
     /* Custom scrollbar */
     ::-webkit-scrollbar {
@@ -86,20 +86,20 @@ const addMobileStyles = () => {
 // Add meta tags for viewport and theme color
 const addMetaTags = () => {
   // Theme color meta tag
-  const themeColorMeta = document.createElement('meta');
-  themeColorMeta.name = 'theme-color';
-  themeColorMeta.content = '#093624';
+  const themeColorMeta = document.createElement("meta");
+  themeColorMeta.name = "theme-color";
+  themeColorMeta.content = "#093624";
   document.head.appendChild(themeColorMeta);
-  
+
   // Title
-  document.title = 'NoteGreen';
+  document.title = "NoteGreen";
 };
 
 // Initialize the app
 const initApp = () => {
   addMobileStyles();
   addMetaTags();
-  
+
   createRoot(document.getElementById("root")!).render(<App />);
 };
 
