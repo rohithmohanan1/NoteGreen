@@ -1,9 +1,15 @@
-import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useStore } from '@/lib/store';
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useStore } from "@/lib/store";
 
 interface CreateTagDialogProps {
   open: boolean;
@@ -11,35 +17,37 @@ interface CreateTagDialogProps {
 }
 
 const COLOR_OPTIONS = [
-  { name: 'Red', value: '#CC3300' },
-  { name: 'Orange', value: '#FF9900' },
-  { name: 'Yellow', value: '#FFCC00' },
-  { name: 'Green', value: '#33CC66' },
-  { name: 'Blue', value: '#3399FF' },
-  { name: 'Purple', value: '#9966FF' },
-  { name: 'Pink', value: '#FF66CC' },
-  { name: 'Gray', value: '#AAAAAA' },
+  { name: "Red", value: "#CC3300" },
+  { name: "Orange", value: "#FF9900" },
+  { name: "Yellow", value: "#FFCC00" },
+  { name: "Green", value: "#33CC66" },
+  { name: "Blue", value: "#3399FF" },
+  { name: "Purple", value: "#9966FF" },
+  { name: "Pink", value: "#FF66CC" },
+  { name: "Gray", value: "#AAAAAA" },
 ];
 
 export function CreateTagDialog({ open, onOpenChange }: CreateTagDialogProps) {
-  const [name, setName] = useState('');
+  const [name, setName] = useState("");
   const [color, setColor] = useState(COLOR_OPTIONS[0].value);
   const addTag = useStore((state) => state.addTag);
-  
+
   const handleSubmit = () => {
     if (name.trim()) {
       addTag({ name: name.trim(), color });
-      setName('');
+      setName("");
       setColor(COLOR_OPTIONS[0].value);
       onOpenChange(false);
     }
   };
-  
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-surface rounded-lg w-full max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-lg font-medium">Create New Tag</DialogTitle>
+          <DialogTitle className="text-lg font-medium">
+            Create New Tag
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
@@ -49,7 +57,7 @@ export function CreateTagDialog({ open, onOpenChange }: CreateTagDialogProps) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Enter tag name"
-              className="bg-cardBg border-none"
+              className="bg-cardBg border-none !text-gray-900"
             />
           </div>
           <div className="space-y-2">
@@ -60,7 +68,7 @@ export function CreateTagDialog({ open, onOpenChange }: CreateTagDialogProps) {
                   key={option.value}
                   type="button"
                   className={`w-8 h-8 rounded-full hover:ring-2 hover:ring-white transition-all ${
-                    color === option.value ? 'ring-2 ring-white' : ''
+                    color === option.value ? "ring-2 ring-white" : ""
                   }`}
                   style={{ backgroundColor: option.value }}
                   onClick={() => setColor(option.value)}
@@ -81,7 +89,7 @@ export function CreateTagDialog({ open, onOpenChange }: CreateTagDialogProps) {
           <Button
             type="button"
             onClick={handleSubmit}
-            style={{ backgroundColor: '#1F5C42' }}
+            style={{ backgroundColor: "#1F5C42" }}
           >
             Create
           </Button>
