@@ -1,12 +1,18 @@
-import { defineConfig } from "drizzle-kit";
-import path from "path";
+import type { Config } from "drizzle-kit";
+import * as dotenv from "dotenv";
+dotenv.config();
 
-export default defineConfig({
+const isProduction = process.env.NODE_ENV === "production";
+
+export default {
   schema: "./shared/schema.ts",
-  out: "./migrations",
-  driver: "turso",
-  dialect: "sqlite",
-  dbCredentials: {
-    url: path.join(process.cwd(), "local.db"),
-  },
-});
+  out: "./drizzle",
+  driver: isProduction ? "pg" : "better-sqlite",
+  dbCredentials: isProduction
+    ? {
+        connectionString: process.env.POSTGRES_URL!,
+      }
+    : {
+        url: "./local.db",
+      },
+} satisfies Config;

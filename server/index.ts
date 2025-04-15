@@ -2,6 +2,8 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic } from "./vite.js";
 
+const log = (...args: any[]) => console.log(new Date().toISOString(), ...args);
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));

@@ -1,12 +1,12 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, timestamp, uuid } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
 
 // Folder Schema
-export const folders = sqliteTable("folders", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const folders = pgTable("folders", {
+  id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull().unique(),
 });
 
@@ -15,13 +15,11 @@ export const insertFolderSchema = createInsertSchema(folders).omit({
 });
 
 // User Schema
-export const users = sqliteTable("users", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({
@@ -30,8 +28,8 @@ export const insertUserSchema = createInsertSchema(users).omit({
 });
 
 // Tag Schema
-export const tags = sqliteTable("tags", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const tags = pgTable("tags", {
+  id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull().unique(),
   color: text("color").notNull(),
 });
@@ -41,19 +39,13 @@ export const insertTagSchema = createInsertSchema(tags).omit({
 });
 
 // Note Schema
-export const notes = sqliteTable("notes", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const notes = pgTable("notes", {
+  id: uuid("id").primaryKey().defaultRandom(),
   title: text("title").notNull(),
-  content: text("content").notNull(),
-  folderId: integer("folder_id").references(() => folders.id, {
-    onDelete: "set null",
-  }),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: integer("updated_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
+  content: text("content"),
+  folderId: uuid("folder_id").references(() => folders.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 export const insertNoteSchema = createInsertSchema(notes).omit({
@@ -62,44 +54,29 @@ export const insertNoteSchema = createInsertSchema(notes).omit({
   updatedAt: true,
 });
 
-// Note-Tag relationship
-export const noteTags = sqliteTable("note_tags", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  noteId: integer("note_id")
-    .notNull()
-    .references(() => notes.id, { onDelete: "cascade" }),
-  tagId: integer("tag_id")
-    .notNull()
-    .references(() => tags.id, { onDelete: "cascade" }),
+// Note-Tag Schema
+export const noteTags = pgTable("note_tags", {
+  noteId: uuid("note_id")
+    .references(() => notes.id)
+    .notNull(),
+  tagId: uuid("tag_id")
+    .references(() => tags.id)
+    .notNull(),
 });
 
-export const insertNoteTagSchema = createInsertSchema(noteTags).omit({
-  id: true,
-});
+export const insertNoteTagSchema = createInsertSchema(noteTags);
 
-// Types
-export type User = typeof users.$inferSelect;
-export type InsertUser = z.infer<typeof insertUserSchema>;
+// Relations
+export const usersRelations = relations(users, ({ many }) => ({
+  notes: many(notes),
+}));
 
-export type Note = typeof notes.$inferSelect;
-export type InsertNote = z.infer<typeof insertNoteSchema>;
-
-export type Tag = typeof tags.$inferSelect;
-export type InsertTag = z.infer<typeof insertTagSchema>;
-
-export type Folder = typeof folders.$inferSelect;
-export type InsertFolder = z.infer<typeof insertFolderSchema>;
-
-export type NoteTag = typeof noteTags.$inferSelect;
-export type InsertNoteTag = z.infer<typeof insertNoteTagSchema>;
-
-// Relations remain the same
 export const notesRelations = relations(notes, ({ one, many }) => ({
   folder: one(folders, {
     fields: [notes.folderId],
     references: [folders.id],
   }),
-  noteTags: many(noteTags),
+  tags: many(noteTags),
 }));
 
 export const foldersRelations = relations(folders, ({ many }) => ({
@@ -107,7 +84,7 @@ export const foldersRelations = relations(folders, ({ many }) => ({
 }));
 
 export const tagsRelations = relations(tags, ({ many }) => ({
-  noteTags: many(noteTags),
+  notes: many(noteTags),
 }));
 
 export const noteTagsRelations = relations(noteTags, ({ one }) => ({
@@ -121,7 +98,15 @@ export const noteTagsRelations = relations(noteTags, ({ one }) => ({
   }),
 }));
 
-// For local storage
-export interface NoteWithTags extends Note {
-  tags: Tag[];
-}
+// Types
+export type User = typeof users.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;
+export type Note = typeof notes.$inferSelect;
+export type InsertNote = typeof notes.$inferInsert;
+export type Folder = typeof folders.$inferSelect;
+export type InsertFolder = typeof folders.$inferInsert;
+export type Tag = typeof tags.$inferSelect;
+export type InsertTag = typeof tags.$inferInsert;
+export type NoteTag = typeof noteTags.$inferSelect;
+export type InsertNoteTag = typeof noteTags.$inferInsert;
+export type NoteWithTags = Note & { tags: Tag[] };
